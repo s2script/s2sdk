@@ -17,6 +17,7 @@
 #include "color.h"
 #include "schemasystem/baseschema.h"
 
+#include <cstddef>
 #include <memory>
 
 class CNetMessage;
@@ -24,7 +25,6 @@ class CNetworkSerializerCodeGenDatabase;
 class CCheckTransmitInfo;
 class CEntityInstance;
 class CNetworkSerializerClassInfo;
-struct NetMessageInfo_t;
 
 enum NetworkValidationMode_t
 {
@@ -35,26 +35,58 @@ typedef int NetworkMessageId;
 typedef uint8 NetworkGroupId;
 typedef uint NetworkCategoryId;
 
-abstract_class INetworkMessageInternal
+// AMNOTE: Builds a fresh message object. Stored on the message record by FindOrCreateNetMessage
+typedef CNetMessage *( *NetMessageAllocateFn_t )( void );
+
+// The record INetworkMessages keeps for every registered net message.
+//
+// AMNOTE: Since CS2 build 26598758 (Nov 11 2026) this is a plain 0x28 byte record built by
+// INetworkMessages::FindOrCreateNetMessage, no longer a polymorphic class: CNetworkSerializerPB and
+// IProtobufBinding are gone from libnetworksystem, and INetworkMessages::GetNetMessageInfo returns
+// the record itself. So INetworkMessageInternal and NetMessageInfo_t are the same object, and the
+// accessors below are plain member reads.
+struct NetMessageInfo_t
+{
+	// AMNOTE: "<proto type name> [<message id>]", for example "CUserMessageSayText2 [118]".
+	// FindNetworkMessage compares the whole string, FindNetworkMessagePartial a substring of it
+	CUtlString m_szName;
+	NetMessageAllocateFn_t m_pfnAllocate;
+	CUtlString m_szGroup;
+	NetworkMessageId m_MessageId;
+	int m_nCategories;
+	// AMNOTE: AddCategoryMask ORs nMask into it too when bRequireHandler is true. ConfirmAllMessageHandlersInstalled
+	// reports channels in these categories that have no handler registered for the message
+	int m_nRequiredHandlerCategories;
+	NetworkGroupId m_GroupId;
+
+	uint8 m_nBufType : 5;
+	// AMNOTE: Set by FindOrCreateNetMessage's bCannotBeNetworked, Serialize rejects the message
+	uint8 m_bCannotBeNetworked : 1;
+	// AMNOTE: Set by FindOrCreateNetMessage's bOkayToRedispatch
+	uint8 m_bOkayToRedispatch : 1;
+	// AMNOTE: Set when FindOrCreateNetMessage was passed a group of -1
+	uint8 m_bNoGroup : 1;
+};
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_pfnAllocate ) == 0x8 );
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_szGroup ) == 0x10 );
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_MessageId ) == 0x18 );
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_nCategories ) == 0x1c );
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_nRequiredHandlerCategories ) == 0x20 );
+COMPILE_TIME_ASSERT( offsetof( NetMessageInfo_t, m_GroupId ) == 0x24 );
+COMPILE_TIME_ASSERT( sizeof( NetMessageInfo_t ) == 0x28 );
+
+class INetworkMessageInternal : public NetMessageInfo_t
 {
 public:
-	virtual ~INetworkMessageInternal() = 0;
+	// Only the engine creates these, through INetworkMessages::FindOrCreateNetMessage
+	INetworkMessageInternal() = delete;
+	INetworkMessageInternal( const INetworkMessageInternal & ) = delete;
 
-	virtual const char *GetUnscopedName() = 0;
-	virtual NetMessageInfo_t *GetNetMessageInfo() = 0;
+	const char *GetUnscopedName() const { return m_szName.Get(); }
+	NetMessageInfo_t *GetNetMessageInfo() { return this; }
+	const NetMessageInfo_t *GetNetMessageInfo() const { return this; }
 
-	virtual void SetMessageId( NetworkMessageId nMessageId ) = 0;
-
-	virtual void AddCategoryMask( int nMask, bool bRequireHandler ) = 0;
-
-	virtual void SwitchMode( NetworkValidationMode_t nMode ) = 0;
-
-	virtual CNetMessage *AllocateMessage() = 0;
-
-	// Calls to INetworkMessages::SerializeMessageInternal
-	virtual bool Serialize( bf_write &pBuf, const CNetMessage *pData ) = 0;
-	// Calls to INetworkMessages::UnserializeMessageInternal
-	virtual bool Unserialize( bf_read &pBuf, CNetMessage *pData ) = 0;
+	CNetMessage *AllocateMessage() const { return m_pfnAllocate ? m_pfnAllocate() : nullptr; }
 };
 
 struct NetworkRecipientsFilter_t

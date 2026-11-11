@@ -138,6 +138,8 @@ public:
 	virtual CUtlQueue<CNetMessage *> *GetReceivedMessageQueue() = 0;
 	// AMNOTE: Writes the incoming flow's dropped and late frame percentages, which the peer reads in SetRemoteFramerate
 	virtual void	WriteFrameQualityToTick( CNetMessagePB<CNETMsg_Tick> *pMsg ) = 0;
+	// AMNOTE: Added in CS2 build 26598758 (Nov 11 2026), CNetChan went from 89 to 90 slots
+	virtual void	unk001() = 0;
 	// AMNOTE: Received messages beyond the convar's value are reported
 	virtual void	SetQueuedMessageLimitConVar( CConVar<int> *pQueuedMessageLimit ) = 0;
 };
