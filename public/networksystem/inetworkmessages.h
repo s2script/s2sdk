@@ -46,7 +46,7 @@ public:
 	virtual INetworkMessageInternal *GetNetMessage() const = 0;
 	virtual CNetMessage *CopyConstruct() const = 0;
 	virtual NetworkMessageId GetMessageId() const = 0;
-	virtual const char *GetName() const = 0;
+	// AMNOTE: GetName() was removed in CS2 build 26598758 (Nov 11 2026), use GetNetMessage()->GetUnscopedName()
 
 	// Helper function to cast up the abstract message to a concrete CNetMessagePB<T> type.
 	// Doesn't do any validity checks itself!
@@ -81,8 +81,7 @@ private:
 // This is mainly to access the game constructed objects, and not for direct initialization of them
 // since this misses the CNetMessage implementation which requires supplying other proto related info like
 // proto binding object, proto msg id/group, etc.
-// So to allocate the message yourself use INetworkMessageInternal::AllocateMessage() or INetworkMessages::AllocateNetMessageAbstract()
-// functions instead of direct initialization (they both are equivalent)!
+// So to allocate the message yourself use INetworkMessageInternal::AllocateMessage() instead of direct initialization!
 // Example usage:
 // CNetMessagePB<ProtoClass> *msg = INetworkMessageInternal::AllocateMessage()->ToPB<ProtoClass>();
 // msg->field1( 2 );
@@ -97,6 +96,8 @@ public:
 	CNetMessagePB( const CNetMessagePB & ) = delete;
 };
 
+// AMNOTE: No longer used by the engine since CS2 build 26598758 (Nov 11 2026), message records hold an
+// allocate function instead (NetMessageInfo_t::m_pfnAllocate). Kept for older code that names the type.
 abstract_class IProtobufBinding
 {
 public:
@@ -113,26 +114,6 @@ public:
 
 	virtual bool OkToRedispatch() = 0;
 	virtual bool unk001() = 0;
-};
-
-struct NetMessageInfo_t
-{
-	int m_nCategories;
-	IProtobufBinding *m_pBinding;
-	CUtlString m_szGroup;
-	NetworkMessageId m_MessageId;
-	NetworkGroupId m_GroupId;
-
-	// AMNOTE: From IProtobufBinding::GetBufType()
-	NetChannelBufType_t m_nBufType : 6;
-	// AMNOTE: Set by FindOrCreateNetMessage's bCannotBeNetworked
-	bool m_bCannotBeNetworked : 1;
-	uint8 m_unk001 : 1;
-
-	// AMNOTE: AddCategoryMask ORs nMask into it too when bRequireHandler is true. ConfirmAllMessageHandlersInstalled
-	// reports channels in these categories that have no handler registered for the message
-	int m_nRequiredHandlerCategories;
-	bool m_bOkayToRedispatch;
 };
 
 enum NetworkFieldChangedDelegateType_t
@@ -158,17 +139,15 @@ typedef char const* ( *NetworkUnkCB001 )(void);
 
 #define NETWORKMESSAGES_INTERFACE_VERSION "NetworkMessagesVersion001"
 
+// AMNOTE: Layout of CS2 build 26598758 (Nov 11 2026), 37 slots in CNetworkMessages' vtable. That update removed
+// FindOrCreateNetMessage's IProtobufBinding form, SerializeAbstract, AllocateAndCopyConstructNetMessageAbstract and
+// DeallocateNetMessageAbstract, and moved FindOrCreateNetMessage down to slot 20
 abstract_class INetworkMessages
 {
 public:
 	virtual void RegisterNetworkCategory(NetworkCategoryId nCategoryId, char const *szDebugName) = 0;
 
-	virtual void AssociateNetMessageWithChannelCategoryAbstract(INetworkMessageInternal *pNetMessage, NetworkCategoryId nCategoryId, bool) = 0;
-
-	// Passing nMessasgeId as -1 would auto-assign the id based on the message name hash.
-	// AMNOTE: bCannotBeNetworked marks the message as never sent over the network, Serialize rejects it,
-	// and its id is auto-assigned too
-	virtual INetworkMessageInternal *FindOrCreateNetMessage(int nMessageId, IProtobufBinding const *pProtoBinding, uint nMessageSize, INetworkSerializerBindingBuildFilter *pUnused, bool bCreateIfNotFound = true, bool bCannotBeNetworked = false) = 0;
+	virtual void AssociateNetMessageWithChannelCategoryAbstract(INetworkMessageInternal *pNetMessage, NetworkCategoryId nCategoryId, bool bRequireHandler) = 0;
 
 	virtual bool Serialize(bf_write &pBuf, const CNetMessage *pData) = 0;
 
@@ -177,19 +156,16 @@ public:
 
 	// Returns nullptr if failed to unserialize, reason is written to err_reason
 	virtual CNetMessage *UnserializeFromStream(bf_read &pBuf, CUtlString &err_reason) = 0;
-	virtual bool SerializeAbstract(bf_write &pBuf, INetworkMessageInternal *pNetMessage, const CNetMessage *pData) = 0;
-
-	virtual CNetMessage *AllocateAndCopyConstructNetMessageAbstract(INetworkMessageInternal *pNetMessage, const CNetMessage *pFrom) = 0;
-
-	virtual void DeallocateNetMessageAbstract(INetworkMessageInternal *pNetMessage, CNetMessage *pData) = 0;
 
 	virtual void *RegisterNetworkFieldSerializer(char const *, NetworkSerializationMode_t, NetworkableDataType_t, int, NetworkFieldSerializeCB, NetworkFieldUnserializeCB, NetworkFieldInfoCB, 
 		NetworkFieldMetaInfoCB, NetworkableDataCB, NetworkUnkCB001, NetworkFieldSerializeCB, NetworkFieldUnserializeCB) = 0;
 	virtual void *RegisterNetworkArrayFieldSerializer(char const *, NetworkSerializationMode_t, NetworkFieldSerializeBufferCB, NetworkFieldUnserializeBufferCB, NetworkFieldInfoCB,
 		NetworkFieldMetaInfoCB, NetworkFieldSerializeBufferCB, NetworkFieldUnserializeBufferCB) = 0;
 
+	// AMNOTE: Returns pNetMessage itself (the record is the info), or an empty static record for nullptr
 	virtual NetMessageInfo_t *GetNetMessageInfo(INetworkMessageInternal *pNetMessage) = 0;
 
+	// AMNOTE: Compares the whole registered name, which ends in " [<message id>]", see NetMessageInfo_t::m_szName
 	virtual INetworkMessageInternal* FindNetworkMessage(char const *szName) = 0;
 	virtual INetworkMessageInternal* FindNetworkMessagePartial(char const *szPartialName) = 0;
 
@@ -206,6 +182,11 @@ public:
 	// AMNOTE: Returns the data SetNetworkSerializationContextData set
 	virtual void *unk101(uint16 hContext, NetworkSerializationMode_t mode) = 0;
 	virtual void unk102(const void *) = 0;
+
+	// Passing nMessageId as -1 would auto-assign the id based on the message name hash.
+	// AMNOTE: pfnAllocate builds a message object, nGroup is the message's SignonGroup_t (-1 for none),
+	// bOkayToRedispatch and bCannotBeNetworked land in the record's flags (Serialize rejects the latter)
+	virtual INetworkMessageInternal *FindOrCreateNetMessage(int nMessageId, NetMessageAllocateFn_t pfnAllocate, int nGroup, NetChannelBufType_t nBufType, bool bOkayToRedispatch, bool bCannotBeNetworked = false) = 0;
 
 	// Doesn't support duplicated callbacks per field
 	virtual void RegisterNetworkFieldChangeCallbackInternal(char const *szFieldName, uint64, NetworkFieldChangedDelegateType_t fieldType, CUtlAbstractDelegate pCallback, NetworkFieldChangeCallbackPerformType_t cbPerformType, int unkflag ) = 0;
