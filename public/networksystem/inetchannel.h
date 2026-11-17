@@ -29,7 +29,7 @@ class	INetChannel;
 class	INetChannelInfo;
 class	INetMessageBinder;
 class	INetworkMessageProcessingPreFilter;
-class	INetworkMessageInternal;
+struct	NetMessageInfo_t;
 class	INetMessageDispatcher;
 class	InstantReplayMessage_t;
 class	CUtlSlot;
@@ -59,7 +59,7 @@ public:
 
 	virtual void	Reset( void ) = 0;
 	virtual void	Clear( void ) = 0;
-	virtual void	Shutdown( ENetworkDisconnectionReason reason ) = 0;
+	virtual void	Shutdown( ENetworkDisconnectionReason reason, const char *pszInternalReason ) = 0;
 	
 	virtual HSteamNetConnection GetSteamNetConnection( void ) const = 0;
 	
@@ -103,10 +103,11 @@ public:
 	virtual INetMessageDispatcher *GetNetMessageDispatcher( void ) const = 0;
 	
 	virtual void	StartRegisteringMessageHandlers( void ) = 0;
-	virtual void	FinishRegisteringMessageHandlers( bool ) = 0;
+	// bConfirmAllMessageHandlersInstalled reports the messages of the channel's categories that have no handler registered
+	virtual void	FinishRegisteringMessageHandlers( bool bConfirmAllMessageHandlersInstalled ) = 0;
 	
-	virtual void	RegisterNetMessageHandlerAbstract( CUtlSlot *nSlot, const CUtlAbstractDelegate &delegate, int nParamCount, INetworkMessageInternal *pNetMessage, int nPriority ) = 0;
-	virtual void	UnregisterNetMessageHandlerAbstract( CUtlSlot *nSlot, const CUtlAbstractDelegate &delegate, INetworkMessageInternal *pNetMessage ) = 0;
+	virtual void	RegisterNetMessageHandlerAbstract( CUtlSlot *nSlot, const CUtlAbstractDelegate &delegate, int nParamCount, NetMessageInfo_t *pNetMessage, int nPriority ) = 0;
+	virtual void	UnregisterNetMessageHandlerAbstract( CUtlSlot *nSlot, const CUtlAbstractDelegate &delegate, NetMessageInfo_t *pNetMessage ) = 0;
 	
 	virtual int		GetNumBitsWritten( NetChannelBufType_t bufferType ) const = 0;
 	virtual void	SetDemoRecorder( IDemoRecorderBase *pDemoRecorder ) = 0;
@@ -138,10 +139,10 @@ public:
 	virtual CUtlQueue<CNetMessage *> *GetReceivedMessageQueue() = 0;
 	// AMNOTE: Writes the incoming flow's dropped and late frame percentages, which the peer reads in SetRemoteFramerate
 	virtual void	WriteFrameQualityToTick( CNetMessagePB<CNETMsg_Tick> *pMsg ) = 0;
-	// AMNOTE: Added in CS2 build 26598758 (Nov 11 2026), CNetChan went from 89 to 90 slots
-	virtual void	unk001() = 0;
-	// AMNOTE: Received messages beyond the convar's value are reported
-	virtual void	SetQueuedMessageLimitConVar( CConVar<int> *pQueuedMessageLimit ) = 0;
+	// AMNOTE: The server sets NET_RECV_LIMIT_MODE_CLIENT on the channels of clients that aren't fake, SourceTV or loopback;
+	// other channels keep NET_RECV_LIMIT_MODE_DEFAULT. Messages the channel receives are unserialized with this mode
+	virtual void	SetRecvLimitMode( NetRecvLimitMode_t nMode ) = 0;
+	virtual NetRecvLimitMode_t GetRecvLimitMode() const = 0;
 };
 
 

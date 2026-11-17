@@ -49,6 +49,7 @@ class IErrorListener;
 #define PARSING_FLAG_UNK006							(1 << 6)
 #define PARSING_FLAG_USE_BASE_AUTO					(1 << 7) // Use auto detection of a number base when parsing (uses https://en.cppreference.com/w/cpp/string/basic_string/stol under the hood, so same base rules applies)
 #define PARSING_FLAG_USE_BASE_16					(1 << 8) // Use base of 16 when parsing
+#define PARSING_FLAG_USE_PARTIAL_RESULT				(1 << 9) // Integer parsing that stops before the end of the string returns what it parsed so far instead of the default
 
 // UNDONE: Find a non-compiler-specific way to do this
 #ifdef _WIN32
@@ -1098,8 +1099,8 @@ protected:
 	int m_nDelimiterLength;
 	int m_nCount;
 	int m_nMaxConversionLength;
-	char m_pList[255];
-	ConversionInfo_t m_pReplacements[255];
+	char m_pList[256];
+	ConversionInfo_t m_pReplacements[256];
 };
 
 #define BEGIN_CHAR_CONVERSION( _name, _delimiter, _escapeChar )	\
