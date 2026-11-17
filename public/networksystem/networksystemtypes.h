@@ -51,12 +51,18 @@ struct ChangeAccessorFieldPathIndexInfo_t
 	IgnoreCache_t m_ShouldNotIgnore;
 };
 
+// AMNOTE: A changed field, or changed elements of a networked vector
 struct VarChangeInfo_t
 {
+	uint32 m_nFieldOffset;
 	ChangeAccessorFieldPathIndex_t m_nRootPathIndex;
-	int16 m_nArrayIndex;
-	uint32 m_nFieldOffset : 31;
-	uint32 m_bResolved : 1;
+
+	// All bits are set when only the whole field changed, and then these hold no element list.
+	// Otherwise the changed elements are in VarChangeList_t::m_ChangedElements[m_nElementListIndex]
+	uint16 m_nElementCount : 7;
+	uint16 m_bElementsSorted : 1;
+	uint16 m_nElementListIndex : 7;
+	uint16 m_bFieldChanged : 1; // The whole field changed too
 };
 
 enum NetworkSerializationMode_t
@@ -97,6 +103,19 @@ enum NetChannelBufType_t : int8
 	BUF_UNRELIABLE = 0,
 	BUF_RELIABLE,
 	BUF_VOICE,
+};
+
+// Where received data comes from, for a net channel and for INetworkMessages' unserialize methods
+// AMNOTE: Only NET_RECV_LIMIT_MODE_CLIENT changes anything. It applies the server's limits on what clients send:
+// net_limit_sv_recvbuffer_kb and net_limit_sv_recvbuffer_msg, net_limit_sv_message_process_time_ms_* and
+// net_message_size_enforce. The other modes get the same defaults as NET_RECV_LIMIT_MODE_DEFAULT
+enum NetRecvLimitMode_t
+{
+	NET_RECV_LIMIT_MODE_DEFAULT = 0,
+	NET_RECV_LIMIT_MODE_CLIENT, // From a remote client, on the server
+	NET_RECV_LIMIT_MODE_SERVER, // From the server, on the client
+	NET_RECV_LIMIT_MODE_P2P,
+	NET_RECV_LIMIT_MODE_DEMO,
 };
 
 DECLARE_POINTER_HANDLE( FlattenedSerializerHandle_t );

@@ -137,6 +137,19 @@ for sdk_target in SdkHelpers.sdk_targets:
 
 builder.Add(lvtest)
 
+# CUtlVectorUltraConservative: null when empty as the engine's, engine-built blocks, elements constructed, removed and destructed
+uvctest = builder.ProgramProject('utlvectorultraconservative_test')
+uvctest.sources = [
+  os.path.join('tests', 'run', 'utlvectorultraconservative.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = uvctest.Configure(sdk_target.cxx, 'utlvectorultraconservative_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(uvctest)
+
 # Resizes, moves, copies (also from NULL) and self-assigns CUtlVectors, and assigns the other vectors on CUtlVectorBase from rvalues
 vectest = builder.ProgramProject('utlvector_test')
 vectest.sources = [
@@ -149,6 +162,32 @@ for sdk_target in SdkHelpers.sdk_targets:
   SdkHelpers.configureCxx(builder, binary, sdk)
 
 builder.Add(vectest)
+
+# Converts CVariants between every type, prints them, copies, compares and converts them in place
+varianttest = builder.ProgramProject('variant_test')
+varianttest.sources = [
+  os.path.join('tests', 'run', 'variant.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = varianttest.Configure(sdk_target.cxx, 'variant_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(varianttest)
+
+# Inserts, removes at the head and anywhere, and reorders CUtlPriorityQueues with functor and function pointer less funcs
+pqtest = builder.ProgramProject('utlpriorityqueue_test')
+pqtest.sources = [
+  os.path.join('tests', 'run', 'utlpriorityqueue.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = pqtest.Configure(sdk_target.cxx, 'utlpriorityqueue_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(pqtest)
 
 # Copies CCommands, also full-length ones, which tokenizes them again with a test cvar system's break set
 cmdtest = builder.ProgramProject('ccommand_test')
@@ -163,6 +202,20 @@ for sdk_target in SdkHelpers.sdk_targets:
   SdkHelpers.configureCxx(builder, binary, sdk)
 
 builder.Add(cmdtest)
+
+# Registers convars and commands with tier0's cvar system, sets and formats the convars and dispatches each kind of command callback
+cvartest = builder.ProgramProject('convar_test')
+cvartest.sources = [
+  os.path.join('tests', 'run', 'convar.cpp'),
+  os.path.join('tier0_perproject', 'convar.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = cvartest.Configure(sdk_target.cxx, 'convar_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(cvartest)
 
 # Inserts dupes and non copyable elements into a CUtlRBTree and a CUtlOrderedMap
 maptest = builder.ProgramProject('utlrbtree_test')
@@ -203,3 +256,56 @@ for sdk_target in SdkHelpers.sdk_targets:
   binary.custom = [builder.tools.Protoc(protoc = sdk_target.protoc, sources = CheckProtos)]
 
 builder.Add(cmdkvtest)
+
+# Finds set bits in fixed and attached bit vectors that end at a no access page
+bvtest = builder.ProgramProject('bitvec_test')
+bvtest.sources = [
+  os.path.join('tests', 'run', 'bitvec.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = bvtest.Configure(sdk_target.cxx, 'bitvec_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(bvtest)
+
+# Takes CThreadRWLock_FastRead's inline read and write locks from several threads through tier0
+rwlocktest = builder.ProgramProject('threadrwlock_test')
+rwlocktest.sources = [
+  os.path.join('tests', 'run', 'threadrwlock.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = rwlocktest.Configure(sdk_target.cxx, 'threadrwlock_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(rwlocktest)
+
+# Writes and reads CUtlBuffer's typed, text and pretty-printing helpers through tier0
+ubtest = builder.ProgramProject('utlbuffer_test')
+ubtest.sources = [
+  os.path.join('tests', 'run', 'utlbuffer.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = ubtest.Configure(sdk_target.cxx, 'utlbuffer_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(ubtest)
+
+# Writes and reads every bf_write and bf_read value kind, bit block, encoding and overflow case
+bbtest = builder.ProgramProject('bitbuf_test')
+bbtest.sources = [
+  os.path.join('tests', 'run', 'bitbuf.cpp'),
+  os.path.join('tier0_perproject', 'bitbuf.cpp'),
+  os.path.join('public', 'tier0', 'memoverride.cpp'),
+]
+
+for sdk_target in SdkHelpers.sdk_targets:
+  binary = bbtest.Configure(sdk_target.cxx, 'bitbuf_test', '{0} - {1}'.format(HL2SDK.tag, sdk_target.cxx.target.arch))
+  SdkHelpers.configureCxx(builder, binary, sdk)
+
+builder.Add(bbtest)

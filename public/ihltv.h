@@ -19,7 +19,6 @@
 class CNetworkGameServerBase;
 class CPlayerSlot;
 class IHLTVDirector;
-class INetworkMessageInternal;
 class CNetMessage;
 class CUtlBuffer;
 class CSteamID;
@@ -52,7 +51,7 @@ public:
 	virtual bool	IsDemoPlayback( void ) = 0; // true if this is a HLTV demo
 	virtual bool	IsActive( void ) = 0;
 
-	virtual void	BroadcastEvent( INetworkMessageInternal *pEvent, const CNetMessage *pData ) = 0; // send a director command to all specs
+	virtual void	BroadcastEvent( const CNetMessage *pData ) = 0; // send a director command to all specs
 	
 	virtual bool	IsRecording() = 0;
 	virtual const char	*GetRecordingDemoFilename ( void ) = 0;
@@ -60,7 +59,8 @@ public:
 	virtual int	GetFirstTick( void ) = 0;
 	virtual void	StartAutoRecording( void ) = 0;
 	virtual void	StopRecording( const CGameInfo *pGameInfo ) = 0;
-	virtual void	AddSaveGame( CSteamID steamID, uint64, int, const CUtlBuffer &buf ) = 0;
+	// Written to the demo as CDemoSaveGame
+	virtual void	AddSaveGame( CSteamID steamID, uint64 nSignature, int nVersion, const CUtlBuffer &buf ) = 0;
 };
 
 #endif
