@@ -141,6 +141,10 @@ public:
 	// Let the game .dll allocate it's own network/shared string tables
 	virtual void			GameCreateNetworkStringTables( void ) = 0;
 
+	// Added in build 26879581 (Nov 23 2026): a one-line forward to a game-system singleton that
+	// GameCreateNetworkStringTables also calls into (its vfunc 1; the latter calls 0 and 2).
+	virtual void			unk_001( void ) = 0;
+
 	virtual void			WriteSignonMessages( const bf_write &buf ) = 0;
 
 	virtual void			PreWorldUpdate( bool simulating ) = 0;
